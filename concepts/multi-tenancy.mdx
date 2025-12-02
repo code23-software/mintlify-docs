@@ -1,0 +1,140 @@
+---
+title: "Multi-Tenancy"
+description: "Understanding personal and team accounts"
+---
+
+## Overview
+
+The platform implements a multi-tenant architecture where each organization's data is securely isolated. Users can have both personal accounts and belong to team accounts.
+
+## Account Types
+
+### Personal Accounts
+
+Every user automatically receives a personal account upon registration. Personal accounts:
+
+- Are created automatically during sign-up
+- Provide individual access to the platform
+- Route via `/home` path
+- Cannot be shared with other users
+
+### Team Accounts
+
+Team accounts enable collaborative workspaces. They:
+
+- Are created explicitly by users
+- Support multiple members with different roles
+- Route via `/home/:account` path
+- Include full role-based access control
+
+## Role Hierarchy
+
+Team accounts support a hierarchical role system:
+
+| Role | Hierarchy Level | Permissions |
+|------|-----------------|-------------|
+| Owner | 1 | Full access, can delete account |
+| Admin | 2 | Manage members, all operations |
+| Manager | 3 | Manage jobs, quotes, operatives |
+| Member | 4 | View and basic operations |
+| Operative | 5 | Field worker, assigned to jobs |
+
+<Info>
+The **Operative** role is specifically for field workers. Operatives appear in the [Planner](/concepts/operatives#the-planner) for job scheduling and can be assigned to jobs. See [Operatives](/concepts/operatives) for details.
+</Info>
+
+### Permission System
+
+Permissions are granular and role-based:
+
+```sql
+-- Check if user has permission
+public.has_permission(user_id, account_id, 'jobs.manage')
+
+-- Check if user has any role on account
+public.has_role_on_account(account_id)
+
+-- Check if user is account owner
+public.is_account_owner(account_id)
+```
+
+## Data Isolation
+
+All data is isolated at the account level using Row Level Security (RLS):
+
+```sql
+-- Example RLS policy for jobs table
+CREATE POLICY "jobs_read" ON public.jobs
+FOR SELECT TO authenticated
+USING (
+  public.has_role_on_account(account_id)
+);
+```
+
+This ensures:
+- Users can only access their own account's data
+- No data leakage between organizations
+- Security enforced at the database level
+
+## Account Selection
+
+The platform includes account switching functionality:
+
+```typescript
+// Account selector component
+import { AccountSelector } from '@kit/team-accounts/components';
+
+function Navigation() {
+  return (
+    <AccountSelector
+      accounts={userAccounts}
+      currentAccount={currentAccount}
+      onSelect={handleAccountChange}
+    />
+  );
+}
+```
+
+## Team Member Management
+
+Team owners and admins can manage members:
+
+- **Invite members**: Send email invitations with role assignment
+- **Update roles**: Change member permissions
+- **Remove members**: Revoke access (except primary owner)
+
+```typescript
+// Invite a new team member
+await teamAccountsApi.inviteMember({
+  accountId: currentAccount.id,
+  email: 'new.member@example.com',
+  role: 'member'
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always check account context">
+    Ensure API routes validate the account context from route parameters:
+    ```typescript
+    const { account } = params;
+    const accountData = await getTeamAccount(account);
+    ```
+  </Accordion>
+  
+  <Accordion title="Use helper functions">
+    Leverage built-in helper functions for permission checks:
+    ```typescript
+    const canManageJobs = await hasPermission(
+      userId, 
+      accountId, 
+      'jobs.manage'
+    );
+    ```
+  </Accordion>
+  
+  <Accordion title="Never bypass RLS">
+    Always use the standard Supabase client. Only use the admin client when absolutely necessary and with explicit authorization checks.
+  </Accordion>
+</AccordionGroup>

@@ -1,68 +1,91 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Operative Intelligence",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#2563EB",
+    "light": "#3B82F6",
+    "dark": "#1D4ED8"
   },
   "favicon": "/favicon.svg",
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
               "index",
               "quickstart",
-              "development"
+              "architecture"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/multi-tenancy",
+              "concepts/job-workflow",
+              "concepts/operatives",
+              "concepts/quotes-contracts"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Development",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "development/setup",
+              "development/commands",
+              "development/testing"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Database",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "database/overview",
+              "database/security",
+              "database/migrations"
+            ]
+          },
+          {
+            "group": "UI & Styling",
+            "pages": [
+              "ui/components",
+              "ui/styling-guide",
+              "ui/patterns"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Jobs",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/jobs/list",
+              "api-reference/jobs/status",
+              "api-reference/jobs/history"
+            ]
+          },
+          {
+            "group": "Quotes",
+            "pages": [
+              "api-reference/quotes/list",
+              "api-reference/quotes/approval"
+            ]
+          },
+          {
+            "group": "Clients & Contracts",
+            "pages": [
+              "api-reference/clients",
+              "api-reference/contracts",
+              "api-reference/contract-contacts"
             ]
           }
         ]
@@ -71,14 +94,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Platform",
+          "href": "https://louisscot-platform.vercel.app",
+          "icon": "browser"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/code23-software",
+          "icon": "github"
         }
       ]
     }
@@ -91,13 +114,13 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@operativeintelligence.co.uk"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Open Platform",
+      "href": "https://louisscot-platform.vercel.app"
     }
   },
   "contextual": {
@@ -114,9 +137,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/code23-software"
     }
   }
 }

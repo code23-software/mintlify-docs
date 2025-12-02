@@ -1,0 +1,197 @@
+---
+title: "Job Workflow"
+description: "Understanding the job management lifecycle"
+---
+
+## Overview
+
+The job workflow system manages the complete lifecycle of maintenance and construction jobs, from initial creation through completion and closure.
+
+## Database Schema
+
+The job system uses interconnected tables:
+
+| Table | Purpose |
+|-------|---------|
+| `jobs` | Core job information and status |
+| `job_status_history` | Audit trail of all status changes |
+| `job_assignments` | Team member and operative assignments |
+| `job_status_transitions` | Valid status transition rules |
+
+### Key Relationships
+
+```
+clients
+  └── contracts
+        └── jobs
+              ├── job_status_history
+              ├── job_assignments
+              └── quotes
+```
+
+## Job Statuses
+
+Jobs progress through defined statuses:
+
+<Steps>
+  <Step title="Created">
+    Job is created with initial details. Ready for assessment.
+  </Step>
+  <Step title="Pre-Works">
+    Job is ready for operative assignment. Appears in the **Planner** for scheduling.
+  </Step>
+  <Step title="In Progress">
+    Work has started. Operatives assigned and on-site.
+  </Step>
+  <Step title="Awaiting Approval">
+    Work complete. Waiting for client or manager sign-off.
+  </Step>
+  <Step title="Completed">
+    Job successfully completed and approved.
+  </Step>
+  <Step title="Closed">
+    Final closure. Job archived for records.
+  </Step>
+</Steps>
+
+<Info>
+Jobs in the **Pre-Works** status (`pre_works`) automatically appear in the [Planner](/concepts/operatives#the-planner) for operative assignment and scheduling.
+</Info>
+
+## Status History
+
+Every status change is automatically recorded:
+
+```typescript
+interface StatusHistoryEntry {
+  id: string;
+  job_id: string;
+  from_status: string;
+  to_status: string;
+  changed_by: string;
+  changed_at: string;
+  notes?: string;
+  automated: boolean;
+}
+```
+
+### Viewing History
+
+The `JobStatusHistory` component displays the complete audit trail:
+
+```tsx
+import { JobStatusHistory } from '~/components/job-status-history';
+
+// Dialog mode (default)
+<JobStatusHistory 
+  jobId={job.id} 
+  jobReference={job.reference} 
+/>
+
+// Inline mode (embedded in page)
+<JobStatusHistory 
+  jobId={job.id} 
+  jobReference={job.reference} 
+  inline={true} 
+/>
+```
+
+## Job Assignments
+
+Jobs can have multiple assignments:
+
+| Assignment Type | Description |
+|-----------------|-------------|
+| Manager | Oversees job progress and approvals |
+| Operative | Performs the actual work |
+| Supervisor | On-site supervision |
+
+```typescript
+// Assign operative to job
+await supabase.from('job_assignments').insert({
+  job_id: jobId,
+  user_id: operativeId,
+  assignment_type: 'operative',
+  assigned_by: currentUserId
+});
+```
+
+## API Endpoints
+
+### List Jobs
+```
+GET /api/jobs?account_id=:accountId
+```
+
+### Get Job History
+```
+GET /api/jobs/history?job_id=:jobId
+```
+
+### Update Job Status
+```
+POST /api/jobs/update-status
+{
+  "jobId": "uuid",
+  "status": "in_progress",
+  "notes": "Optional notes"
+}
+```
+
+### Assign Operative
+```
+POST /api/jobs/assign
+{
+  "jobId": "uuid",
+  "operativeId": "uuid",
+  "assignmentType": "operative"
+}
+```
+
+## Components
+
+### JobStatusBadge
+
+Displays job status with consistent color coding:
+
+```tsx
+import { JobStatusBadge } from '~/components/job-status-badge';
+
+<JobStatusBadge status={job.status} />
+```
+
+### Job Details Page
+
+The job details page (`/home/:account/jobs/:jobReference`) includes:
+
+- **Overview tab**: Job information and current status
+- **History tab**: Full status timeline
+- **Documents tab**: Associated files and photos
+- **Quotes tab**: Related quotes and variations
+
+## Date Formatting
+
+All timestamps use UK locale formatting:
+
+```typescript
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+// Output: "28 Nov 2025, 14:30"
+```
+
+## Best Practices
+
+<Warning>
+Always use the API endpoints to update job status. Direct database updates bypass the automatic history logging.
+</Warning>
+
+<Tip>
+Include meaningful notes when changing job status. This helps with audit trails and client communication.
+</Tip>

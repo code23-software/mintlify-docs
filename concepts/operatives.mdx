@@ -1,0 +1,226 @@
+---
+title: "Operatives"
+description: "Managing field operatives and their assignments"
+---
+
+## Overview
+
+Operatives are the field workers who perform jobs on-site. The platform supports two models for operative management, allowing flexibility based on your organization's needs.
+
+## Operative Models
+
+### Basic Operatives
+
+Operatives can be added to the system without requiring platform access:
+
+- Created via the **Operatives** menu in the admin interface
+- Stored in the `operatives` table with basic contact information
+- Can be assigned to jobs for scheduling purposes
+- Do not have platform login credentials
+
+### Team Member Operatives
+
+Operatives can also be linked to user accounts, enabling full platform integration:
+
+- Associated with an `auth.users` account
+- Added to team `accounts_memberships` with the `operative` role
+- Appear in the planner for drag-and-drop scheduling
+- Can potentially log in to access mobile/field features (when enabled)
+
+## Database Schema
+
+The operative system uses these key tables:
+
+| Table | Purpose |
+|-------|---------|
+| `operatives` | Core operative information (name, contact, skills) |
+| `accounts_memberships` | Team membership with `operative` role |
+| `user_skills` | Skills assigned to operative users |
+| `job_assignments` | Operative assignments to specific jobs |
+
+### Operatives Table
+
+```sql
+-- Key columns in operatives table
+id              uuid PRIMARY KEY
+account_id      uuid REFERENCES accounts(id)    -- Organization
+user_id         uuid REFERENCES auth.users(id)  -- Optional link to user account
+ops_no          text                            -- Operative number
+first_name      text
+last_name       text
+email           text
+phone           text
+```
+
+### Linking Operatives to Users
+
+When an operative is linked to a user account:
+
+```
+operatives.user_id → auth.users.id
+                         ↓
+              accounts_memberships (role: 'operative')
+                         ↓
+                   user_skills
+```
+
+This enables the operative to appear in team-based features like the planner.
+
+## The Planner
+
+The planner provides a visual interface for scheduling operatives to jobs.
+
+### Accessing the Planner
+
+Navigate to: `/home/:account/planner`
+
+### Features
+
+<CardGroup cols={2}>
+  <Card title="Visual Timeline" icon="calendar">
+    Week view showing operative availability and assignments
+  </Card>
+  <Card title="Unassigned Jobs" icon="briefcase">
+    Jobs in "pre_works" status ready for assignment
+  </Card>
+  <Card title="Drag & Drop" icon="arrows-up-down-left-right">
+    Assign operatives to jobs by dragging to time slots
+  </Card>
+  <Card title="Skill Matching" icon="check">
+    View operative skills to match job requirements
+  </Card>
+</CardGroup>
+
+### Job Assignment Workflow
+
+<Steps>
+  <Step title="Job reaches Pre-Works">
+    Jobs must be in `pre_works` status to appear in the planner's unassigned jobs list.
+  </Step>
+  <Step title="View Available Operatives">
+    The planner shows all operatives linked as team members with their current schedule.
+  </Step>
+  <Step title="Assign to Job">
+    Drag a job to an operative's timeline or use the assignment interface.
+  </Step>
+  <Step title="Assignment Created">
+    A `job_assignments` record is created linking the operative to the job.
+  </Step>
+</Steps>
+
+### Planner Data Requirements
+
+For operatives to appear in the planner, they must:
+
+1. Have an entry in `auth.users` (user account)
+2. Have an `accounts_memberships` record with role `operative`
+3. Belong to the same team account
+
+For jobs to appear in the planner:
+
+1. Job must be in `pre_works` status
+2. Job must belong to the same account (`organization_id`)
+
+## Operative Skills
+
+Skills help match operatives to appropriate jobs:
+
+```typescript
+// Skills are assigned to operative users
+interface UserSkill {
+  user_id: string;
+  skill_id: string;
+  skill: {
+    id: string;
+    name: string;
+  };
+}
+```
+
+Jobs can specify required skills via `job_tags`, and the planner displays operative skills to help with appropriate assignment.
+
+## Converting Basic Operatives to Team Members
+
+To convert existing operatives to team members (without sending invitation emails):
+
+<Warning>
+This is a database-level operation that creates user accounts without passwords. The operatives will appear as team members but cannot log in until a password is set.
+</Warning>
+
+The process involves:
+
+1. Creating an `auth.users` record with `email_confirmed_at` set (no password)
+2. Creating an `auth.identities` record for the email provider
+3. Adding an `accounts_memberships` record with `operative` role
+4. Updating the `operatives` table to link `user_id`
+
+```sql
+-- Link operative to user account
+UPDATE public.operatives
+SET user_id = :new_user_id
+WHERE id = :operative_id;
+
+-- Add to team membership
+INSERT INTO public.accounts_memberships (
+  user_id, account_id, account_role
+) VALUES (
+  :new_user_id, :account_id, 'operative'
+);
+```
+
+## API Usage
+
+### List Operatives
+
+```typescript
+const { data: operatives } = await supabase
+  .from('operatives')
+  .select('*')
+  .eq('account_id', accountId)
+  .is('deleted_at', null);
+```
+
+### Get Operative Team Members (for Planner)
+
+```typescript
+// Fetch operatives with the 'operative' role in team
+const { data: operatives } = await supabase
+  .from('accounts_memberships')
+  .select(`
+    user_id,
+    users:user_id (
+      id,
+      raw_user_meta_data
+    )
+  `)
+  .eq('account_id', accountId)
+  .eq('account_role', 'operative');
+```
+
+### Assign Operative to Job
+
+```typescript
+await supabase.from('job_assignments').insert({
+  job_id: jobId,
+  user_id: operativeUserId,
+  assignment_type: 'operative',
+  assigned_by: currentUserId,
+  scheduled_date: assignmentDate
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep operative data synchronized">
+    When updating operative information, ensure both the `operatives` table and `auth.users.raw_user_meta_data` stay in sync for linked operatives.
+  </Accordion>
+
+  <Accordion title="Use skills for job matching">
+    Assign relevant skills to operatives and tag jobs with required skills. This helps the planner show appropriate matches.
+  </Accordion>
+
+  <Accordion title="Monitor assignment capacity">
+    Use the planner's visual timeline to avoid over-scheduling operatives. Consider travel time between job sites.
+  </Accordion>
+</AccordionGroup>
